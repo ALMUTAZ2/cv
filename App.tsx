@@ -23,9 +23,8 @@ import RewriteView from './components/RewriteView.tsx';
 import Pricing from './components/Pricing.tsx';
 import RateLimitOverlay from './components/RateLimitOverlay.tsx';
 
-const RPM_LIMIT = 15;
-const RPD_LIMIT = 1500;
-const TOTAL_FREE_LIMIT = 2; // تحديث الحد الإجمالي إلى 2
+const RPM_LIMIT = 5;
+const RPD_LIMIT = 2; // الحد اليومي الصارم هو 2
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
@@ -54,7 +53,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const savedHistory = localStorage.getItem('smartats_history');
-    const savedUsage = localStorage.getItem('smartats_usage');
     const savedDailyCount = localStorage.getItem('smartats_daily_count');
     const savedLastDate = localStorage.getItem('smartats_last_date');
     const today = new Date().toLocaleDateString();
@@ -72,7 +70,6 @@ const App: React.FC = () => {
     setState(prev => ({ 
       ...prev, 
       history: savedHistory ? JSON.parse(savedHistory) : [],
-      usageCount: savedUsage ? parseInt(savedUsage) : 0,
       dailyUsageCount: dailyCount,
       lastResetDate: lastDate
     }));
@@ -82,14 +79,12 @@ const App: React.FC = () => {
     const now = Date.now();
     const oneMinuteAgo = now - 60000;
     
-    // فحص RPM (طلبات في الدقيقة)
     const validRpmTimestamps = rpmTimestamps.filter(ts => ts > oneMinuteAgo);
     if (validRpmTimestamps.length >= RPM_LIMIT) {
       const oldestRequest = Math.min(...validRpmTimestamps);
       return { limited: true, type: 'RPM' as const, resetTime: oldestRequest + 60000 };
     }
 
-    // فحص RPD (طلبات في اليوم)
     if (state.dailyUsageCount >= RPD_LIMIT) {
       const midnight = new Date();
       midnight.setHours(24, 0, 0, 0);
@@ -100,13 +95,6 @@ const App: React.FC = () => {
   };
 
   const handleAnalyze = async (text: string, jd: string, name: string) => {
-    // 1. فحص الحد الإجمالي (2 طلبات)
-    if (state.usageCount >= TOTAL_FREE_LIMIT) {
-      setState(prev => ({ ...prev, currentView: 'pricing' }));
-      return;
-    }
-
-    // 2. فحص حدود السرعة (RPM/RPD)
     const check = getWaitTimes();
     if (check.limited) {
       setRateLimitState({ active: true, type: check.type, resetTime: check.resetTime! });
@@ -121,11 +109,9 @@ const App: React.FC = () => {
     try {
       const result = await analyzeCV(text, jd);
       const now = Date.now();
-      const newUsage = state.usageCount + 1;
       const newDailyCount = state.dailyUsageCount + 1;
       
       setRpmTimestamps(prev => [...prev.filter(ts => ts > now - 60000), now]);
-      localStorage.setItem('smartats_usage', newUsage.toString());
       localStorage.setItem('smartats_daily_count', newDailyCount.toString());
 
       const newHistoryItem: HistoryItem = {
@@ -143,15 +129,14 @@ const App: React.FC = () => {
         ...prev,
         analysisResult: result,
         history: newHistory,
-        usageCount: newUsage,
         dailyUsageCount: newDailyCount,
         isAnalyzing: false,
         currentView: 'analyze'
       }));
-    } catch (error) {
-      console.error("Analysis failed", error);
+    } catch (error: any) {
+      console.error("Analysis failed with error:", error);
       setState(prev => ({ ...prev, isAnalyzing: false }));
-      alert("Analysis failed. Please try again.");
+      alert(`Analysis failed: ${error.message || 'Unknown error'}. Please verify your API_KEY is set in Vercel environment variables.`);
     }
   };
 
@@ -169,10 +154,10 @@ const App: React.FC = () => {
       setRpmTimestamps(prev => [...prev.filter(ts => ts > now - 60000), now]);
       
       setState(prev => ({ ...prev, rewriteResult: result, isRewriting: false }));
-    } catch (error) {
-      console.error("Rewrite failed", error);
+    } catch (error: any) {
+      console.error("Rewrite failed:", error);
       setState(prev => ({ ...prev, isRewriting: false }));
-      alert("AI Rewriter is currently unavailable.");
+      alert(`Rewrite failed: ${error.message || 'Service unavailable'}`);
     }
   };
 
@@ -242,20 +227,20 @@ const App: React.FC = () => {
           <div className="mt-auto p-6 border-t border-slate-100 bg-slate-50/50">
             <div className="bg-white rounded-2xl p-5 mb-6 border border-slate-200 shadow-sm">
               <div className="flex justify-between items-center text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest">
-                <span>Free Trial Usage</span>
-                <span>{state.usageCount} / {TOTAL_FREE_LIMIT}</span>
+                <span className="flex items-center"><Timer className="h-3 w-3 mr-1" /> Daily Limit</span>
+                <span>{state.dailyUsageCount} / {RPD_LIMIT}</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                 <div 
                   className="bg-indigo-600 h-full transition-all duration-1000" 
-                  style={{ width: `${(state.usageCount / TOTAL_FREE_LIMIT) * 100}%` }}
+                  style={{ width: `${(state.dailyUsageCount / RPD_LIMIT) * 100}%` }}
                 ></div>
               </div>
             </div>
 
             <button className="flex items-center w-full px-4 py-3 text-sm font-bold text-slate-500 hover:bg-white hover:text-slate-900 rounded-xl transition-all">
               <Settings className="mr-3 h-5 w-5 text-slate-400" />
-              System Settings
+              Settings
             </button>
           </div>
         </div>
@@ -267,7 +252,7 @@ const App: React.FC = () => {
             <FileUpload 
               onAnalyze={handleAnalyze} 
               isAnalyzing={state.isAnalyzing} 
-              usageCount={state.usageCount}
+              usageCount={state.dailyUsageCount}
             />
           )}
 

@@ -2,21 +2,25 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, RewriteResult } from "./types.ts";
 
-// استخدام Flash لأنه أسرع وأكثر دقة في توليد JSON المعقد بدون أخطاء
-const MODEL_NAME = "gemini-3-flash-preview";
+// استخدام نسخة Pro للمهام المعقدة مثل تحليل السير الذاتية لضمان دقة النتائج
+const MODEL_NAME = "gemini-3-pro-preview";
 
 export async function analyzeCV(cvText: string, jdText: string): Promise<AnalysisResult> {
+  // إنشاء مثيل جديد في كل مرة لضمان استخدام أحدث مفتاح API من البيئة
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const contextJd = jdText.trim() || "General Professional Role";
 
   const prompt = `
-    ACT AS A SENIOR TECHNICAL RECRUITER & ATS ARCHITECT.
-    Perform a "Deep ATS Analysis" on the CV provided against the Job Description (JD).
+    You are a world-class ATS (Applicant Tracking System) Expert. 
+    Analyze the following CV against the Job Description.
     
-    JD: ${contextJd}
-    CV: ${cvText}
+    JOB DESCRIPTION:
+    ${contextJd}
     
-    IMPORTANT: Respond ONLY with a valid JSON object.
+    CURRICULUM VITAE:
+    ${cvText}
+    
+    TASK: Provide a comprehensive technical audit in JSON format.
   `;
 
   try {
@@ -26,7 +30,6 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
       config: {
         responseMimeType: "application/json",
         temperature: 0.1,
-        // إزالة ميزانية التفكير لزيادة سرعة الاستجابة وتجنب أخطاء المعالجة
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -124,11 +127,11 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
     });
 
     const text = response.text;
-    if (!text) throw new Error("No response text");
+    if (!text) throw new Error("AI returned an empty response.");
     return JSON.parse(text);
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    throw error;
+  } catch (error: any) {
+    console.error("Gemini Analysis Error Details:", error);
+    throw new Error(error.message || "Unknown analysis failure");
   }
 }
 
@@ -139,14 +142,11 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
     : [];
 
   const prompt = `
-    You are an ATS CV Optimization Engine.
-    Improve the existing CV without adding fake details.
+    You are an AI Resume Architect. Re-engineer the CV below to be high-impact and ATS-compliant.
+    Focus on incorporating these keywords where truthful: ${jobKeywords.join(', ')}
     
-    Original CV:
+    CV CONTENT:
     ${cvText}
-
-    Targeting Keywords:
-    ${jobKeywords.join(', ')}
   `;
 
   try {
@@ -189,10 +189,10 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
     });
 
     const text = response.text;
-    if (!text) throw new Error("No response text");
+    if (!text) throw new Error("AI returned an empty response.");
     return JSON.parse(text);
-  } catch (error) {
-    console.error("Rewrite Error:", error);
-    throw error;
+  } catch (error: any) {
+    console.error("Gemini Rewrite Error Details:", error);
+    throw new Error(error.message || "Unknown rewrite failure");
   }
 }
