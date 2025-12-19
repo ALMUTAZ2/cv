@@ -2,17 +2,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, RewriteResult } from "./types.ts";
 
-// استخدام نسخة Pro للمهام المعقدة مثل تحليل السير الذاتية لضمان دقة النتائج
-const MODEL_NAME = "gemini-3-pro-preview";
+// استخدام Flash لأنه الأفضل حالياً في التعامل مع الـ JSON المعقد والسرعة العالية
+const MODEL_NAME = "gemini-3-flash-preview";
 
 export async function analyzeCV(cvText: string, jdText: string): Promise<AnalysisResult> {
-  // إنشاء مثيل جديد في كل مرة لضمان استخدام أحدث مفتاح API من البيئة
+  if (!process.env.API_KEY) {
+    throw new Error("API_KEY_MISSING: تأكد من إضافة المفتاح في إعدادات Vercel بشكل صحيح باسم API_KEY");
+  }
+
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const contextJd = jdText.trim() || "General Professional Role";
 
   const prompt = `
-    You are a world-class ATS (Applicant Tracking System) Expert. 
-    Analyze the following CV against the Job Description.
+    You are an expert ATS (Applicant Tracking System) Analyzer. 
+    Perform a deep technical audit of the following CV against the provided Job Description.
     
     JOB DESCRIPTION:
     ${contextJd}
@@ -20,7 +23,7 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
     CURRICULUM VITAE:
     ${cvText}
     
-    TASK: Provide a comprehensive technical audit in JSON format.
+    Return the analysis in strict JSON format.
   `;
 
   try {
@@ -29,7 +32,7 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        temperature: 0.1,
+        temperature: 0.1, // درجة حرارة منخفضة لضمان دقة البيانات
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -121,32 +124,34 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
             weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
             suggestedRoles: { type: Type.ARRAY, items: { type: Type.STRING } }
           },
-          required: ["finalScore", "scores", "parseabilityDetails", "complianceDetails", "relevanceDetails", "impactDetails", "topFixes", "strengths", "weaknesses"]
+          required: ["finalScore", "scores", "parseabilityDetails", "complianceDetails", "relevanceDetails", "impactDetails", "topFixes", "strengths", "weaknesses", "suggestedRoles"]
         }
       }
     });
 
     const text = response.text;
-    if (!text) throw new Error("AI returned an empty response.");
+    if (!text) throw new Error("AI_EMPTY_RESPONSE: لم يرجع النموذج أي بيانات.");
     return JSON.parse(text);
   } catch (error: any) {
-    console.error("Gemini Analysis Error Details:", error);
-    throw new Error(error.message || "Unknown analysis failure");
+    console.error("Gemini Analysis Error:", error);
+    // استخراج رسالة الخطأ الأصلية لتسهيل التشخيص
+    const errorMessage = error?.message || "Internal AI Error";
+    throw new Error(`${errorMessage}`);
   }
 }
 
 export async function rewriteCV(cvText: string, jdText: string, analysis?: AnalysisResult): Promise<RewriteResult> {
+  if (!process.env.API_KEY) throw new Error("API_KEY is missing");
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
   const jobKeywords = analysis 
     ? [...analysis.relevanceDetails.missingMustHave, ...analysis.relevanceDetails.missingNiceToHave] 
     : [];
 
   const prompt = `
-    You are an AI Resume Architect. Re-engineer the CV below to be high-impact and ATS-compliant.
-    Focus on incorporating these keywords where truthful: ${jobKeywords.join(', ')}
-    
-    CV CONTENT:
-    ${cvText}
+    You are an AI CV Architect. Rewrite the CV to optimize it for ATS.
+    Use high-impact action verbs. Focus on: ${jobKeywords.join(', ')}.
+    CV: ${cvText}
   `;
 
   try {
@@ -189,10 +194,10 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
     });
 
     const text = response.text;
-    if (!text) throw new Error("AI returned an empty response.");
+    if (!text) throw new Error("AI_REWRITE_EMPTY");
     return JSON.parse(text);
   } catch (error: any) {
-    console.error("Gemini Rewrite Error Details:", error);
-    throw new Error(error.message || "Unknown rewrite failure");
+    console.error("Gemini Rewrite Error:", error);
+    throw new Error(error?.message || "Rewrite failed");
   }
 }

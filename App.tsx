@@ -134,9 +134,9 @@ const App: React.FC = () => {
         currentView: 'analyze'
       }));
     } catch (error: any) {
-      console.error("Analysis failed with error:", error);
+      console.error("Frontend Analysis error:", error);
       setState(prev => ({ ...prev, isAnalyzing: false }));
-      alert(`Analysis failed: ${error.message || 'Unknown error'}. Please verify your API_KEY is set in Vercel environment variables.`);
+      alert(`Technical Error: ${error.message || 'The AI engine is currently unavailable.'}`);
     }
   };
 
