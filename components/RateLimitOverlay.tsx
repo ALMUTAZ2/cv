@@ -49,7 +49,7 @@ const RateLimitOverlay: React.FC<RateLimitOverlayProps> = ({ type, resetTime, on
           <p className="text-slate-500 font-medium leading-relaxed">
             {type === 'RPM' 
               ? 'Our AI engine is processing many requests. Please wait a moment before the next audit.'
-              : 'You have reached the maximum 1,500 audits for today. System will reset at midnight.'}
+              : 'You have reached the maximum 2 audits for today. System will reset at midnight.'}
           </p>
         </div>
 

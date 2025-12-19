@@ -23,10 +23,8 @@ import RewriteView from './RewriteView.tsx';
 import Pricing from './Pricing.tsx';
 import RateLimitOverlay from './RateLimitOverlay.tsx';
 
-// حد الطلبات في الدقيقة الواحدة (لحماية API)
-const RPM_LIMIT = 5; 
-// الحد اليومي المطلوب (2 طلبات لكل IP/جهاز)
-const RPD_LIMIT = 2; 
+const RPM_LIMIT = 5;
+const RPD_LIMIT = 2; // الحد اليومي الصارم هو 2
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
@@ -81,14 +79,12 @@ const App: React.FC = () => {
     const now = Date.now();
     const oneMinuteAgo = now - 60000;
     
-    // فحص حدود الدقيقة (RPM)
     const validRpmTimestamps = rpmTimestamps.filter(ts => ts > oneMinuteAgo);
     if (validRpmTimestamps.length >= RPM_LIMIT) {
       const oldestRequest = Math.min(...validRpmTimestamps);
       return { limited: true, type: 'RPM' as const, resetTime: oldestRequest + 60000 };
     }
 
-    // فحص الحدود اليومية (RPD) - هنا نطبق حد الـ 2 طلبات
     if (state.dailyUsageCount >= RPD_LIMIT) {
       const midnight = new Date();
       midnight.setHours(24, 0, 0, 0);
@@ -112,7 +108,6 @@ const App: React.FC = () => {
 
     try {
       const result = await analyzeCV(text, jd);
-      
       const now = Date.now();
       const newDailyCount = state.dailyUsageCount + 1;
       
@@ -141,7 +136,7 @@ const App: React.FC = () => {
     } catch (error) {
       console.error("Critical Analysis failure:", error);
       setState(prev => ({ ...prev, isAnalyzing: false }));
-      alert("Analysis failed. This might be due to an invalid API_KEY in Vercel or safety filters. Please check your settings.");
+      alert("Analysis failed. Please ensure your API_KEY is correct in Vercel settings and try again.");
     }
   };
 
@@ -162,7 +157,7 @@ const App: React.FC = () => {
     } catch (error) {
       console.error("Rewrite failed", error);
       setState(prev => ({ ...prev, isRewriting: false }));
-      alert("AI Rewriter is currently unavailable. Check your connection.");
+      alert("Rewrite service is temporarily unavailable.");
     }
   };
 

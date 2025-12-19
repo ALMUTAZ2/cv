@@ -2,8 +2,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, RewriteResult } from "./types.ts";
 
-// استخدام النسخة الاحترافية لضمان تحليل أعمق واستقرار في معالجة البيانات المعقدة
-const MODEL_NAME = "gemini-3-pro-preview";
+// استخدام Flash لأنه أسرع وأكثر دقة في توليد JSON المعقد بدون أخطاء
+const MODEL_NAME = "gemini-3-flash-preview";
 
 export async function analyzeCV(cvText: string, jdText: string): Promise<AnalysisResult> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -13,15 +13,10 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
     ACT AS A SENIOR TECHNICAL RECRUITER & ATS ARCHITECT.
     Perform a "Deep ATS Analysis" on the CV provided against the Job Description (JD).
     
-    LAYERS TO ANALYZE:
-    1. PARSEABILITY (35% weight): Check for columns, scanned images, machine-readability.
-    2. COMPLIANCE (35% weight): Structure check (Contact, Experience, Education, Skills).
-    3. RELEVANCE (30% weight): Match keywords, tools, and seniority.
-
     JD: ${contextJd}
     CV: ${cvText}
     
-    IMPORTANT: Respond ONLY with a valid JSON object following the schema provided.
+    IMPORTANT: Respond ONLY with a valid JSON object.
   `;
 
   try {
@@ -31,8 +26,7 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
       config: {
         responseMimeType: "application/json",
         temperature: 0.1,
-        // إضافة ميزانية تفكير بسيطة لضمان جودة التحليل
-        thinkingConfig: { thinkingBudget: 1000 },
+        // إزالة ميزانية التفكير لزيادة سرعة الاستجابة وتجنب أخطاء المعالجة
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -129,35 +123,25 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
       }
     });
 
-    if (!response.text) {
-      throw new Error("Empty response from AI engine");
-    }
-
-    return JSON.parse(response.text);
+    const text = response.text;
+    if (!text) throw new Error("No response text");
+    return JSON.parse(text);
   } catch (error) {
-    console.error("Gemini Analysis Error:", error);
+    console.error("Gemini Error:", error);
     throw error;
   }
 }
 
 export async function rewriteCV(cvText: string, jdText: string, analysis?: AnalysisResult): Promise<RewriteResult> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
   const jobKeywords = analysis 
     ? [...analysis.relevanceDetails.missingMustHave, ...analysis.relevanceDetails.missingNiceToHave] 
     : [];
 
   const prompt = `
-    You are an ATS-Driven CV Optimization Engine.
-    Your task is to improve ONLY the existing content of the user's CV.
-    STRICT RULE: Do NOT add any new certifications, degrees, job titles, tools, or skills that are not explicitly present in the original CV text.
-
-    RECONSTRUCTION RULES:
-    1. ZERO FABRICATION: Do NOT invent dates, companies, or credentials.
-    2. STAR ENHANCEMENT: Rephrase existing achievements into the Situation-Task-Action-Result format using ONLY provided facts.
-    3. VERBAL POWER: Use elite action verbs (Spearheaded, Orchestrated, Engineered).
-    4. ATS HYGIENE: Standard ASCII formatting, no columns, no tables.
-
+    You are an ATS CV Optimization Engine.
+    Improve the existing CV without adding fake details.
+    
     Original CV:
     ${cvText}
 
@@ -172,7 +156,6 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
       config: {
         responseMimeType: "application/json",
         temperature: 0.2,
-        thinkingConfig: { thinkingBudget: 1000 },
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -205,9 +188,11 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
       }
     });
 
-    return JSON.parse(response.text);
+    const text = response.text;
+    if (!text) throw new Error("No response text");
+    return JSON.parse(text);
   } catch (error) {
-    console.error("Gemini Rewrite Error:", error);
+    console.error("Rewrite Error:", error);
     throw error;
   }
 }
