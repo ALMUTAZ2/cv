@@ -2,25 +2,28 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, RewriteResult } from "./types.ts";
 
-// Obfuscated API Key as requested
-const _getK = (): string => {
-  // AIzaSyDCK5j-yU6mKU6P2HsKHe6P-5Lme4YRFJE
-  const _s = "EJFRY4emL5-P6eHKsH2P6UKm6Uy-j5KCDySazIA";
-  return _s.split('').reverse().join('');
+/**
+
+const getApiKey = () => {
+  const key = process.env.API_KEY;
+  if (!key) {
+    console.error("Missing API_KEY: Please set it in your Vercel Environment Variables.");
+  }
+  return key || "";
 };
 
-const API_KEY = process.env.API_KEY || _getK();
 const MODEL_NAME = "gemini-3-flash-preview";
 
 export async function analyzeCV(cvText: string, jdText: string): Promise<AnalysisResult> {
-  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
   const contextJd = jdText?.trim() || "General Professional CV Audit";
 
   const prompt = `
-    Analyze the following CV against the Job Description.
+    Analyze the following CV against the provided Job Description.
     JD: ${contextJd}
-    CV: ${cvText}
-    Return a detailed JSON object matching the requested schema exactly.
+    CV Content: ${cvText}
+    
+    Return a detailed JSON object following the required schema exactly.
   `;
 
   try {
@@ -139,17 +142,17 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
 }
 
 export async function rewriteCV(cvText: string, jdText: string, analysis?: AnalysisResult): Promise<RewriteResult> {
-  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
   const keywords = analysis 
     ? [...analysis.relevanceDetails.missingMustHave, ...analysis.relevanceDetails.missingNiceToHave].join(", ") 
     : "standard professional keywords";
 
   const prompt = `
-    Optimize the following CV for ATS. Incorporate these keywords: ${keywords}.
-    Maintain original experience but improve impact verbs and phrasing.
+    Rewrite the following CV content to be ATS-optimized. 
+    Focus on incorporating missing keywords: ${keywords}.
+    Maintain factual honesty. Enhance impact and action verbs.
+    Original CV: ${cvText}
     JD Context: ${jdText}
-    CV: ${cvText}
-    Return ONLY a valid JSON object.
   `;
 
   try {

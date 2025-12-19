@@ -24,7 +24,7 @@ import Pricing from './components/Pricing.tsx';
 import RateLimitOverlay from './components/RateLimitOverlay.tsx';
 
 const RPM_LIMIT = 5;
-const RPD_LIMIT = 10; // زيادة الحد قليلاً للتجربة
+const RPD_LIMIT = 2; // تم التعديل إلى 2 بناءً على طلبك
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
@@ -119,7 +119,7 @@ const App: React.FC = () => {
         date: new Date().toLocaleDateString(),
         fileName: name,
         score: result.finalScore,
-        matchPercentage: result.relevanceDetails.matchPercent,
+        matchPercentage: result.relevanceDetails?.matchPercent || 0,
       };
 
       const newHistory = [newHistoryItem, ...state.history];
