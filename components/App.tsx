@@ -133,10 +133,10 @@ const App: React.FC = () => {
         isAnalyzing: false,
         currentView: 'analyze'
       }));
-    } catch (error) {
-      console.error("Critical Analysis failure:", error);
+    } catch (error: any) {
+      console.error("Analysis failure:", error);
       setState(prev => ({ ...prev, isAnalyzing: false }));
-      alert("Analysis failed. Please ensure your API_KEY is correct in Vercel settings and try again.");
+      alert(`عذراً، فشل التحليل: ${error.message || 'مشكلة في الاتصال بالذكاء الاصطناعي.'}`);
     }
   };
 
@@ -154,10 +154,10 @@ const App: React.FC = () => {
       setRpmTimestamps(prev => [...prev.filter(ts => ts > now - 60000), now]);
       
       setState(prev => ({ ...prev, rewriteResult: result, isRewriting: false }));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Rewrite failed", error);
       setState(prev => ({ ...prev, isRewriting: false }));
-      alert("Rewrite service is temporarily unavailable.");
+      alert("عذراً، خدمة تحسين النص غير متاحة حالياً.");
     }
   };
 

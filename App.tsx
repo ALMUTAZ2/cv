@@ -24,7 +24,7 @@ import Pricing from './components/Pricing.tsx';
 import RateLimitOverlay from './components/RateLimitOverlay.tsx';
 
 const RPM_LIMIT = 5;
-const RPD_LIMIT = 2; // الحد اليومي الصارم هو 2
+const RPD_LIMIT = 10; // زيادة الحد قليلاً للتجربة
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({

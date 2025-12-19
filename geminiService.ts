@@ -2,28 +2,24 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, RewriteResult } from "./types.ts";
 
-// استخدام Flash لأنه الأفضل حالياً في التعامل مع الـ JSON المعقد والسرعة العالية
+// نستخدم Flash لضمان أسرع استجابة وأفضل توافق مع مخططات JSON المعقدة
 const MODEL_NAME = "gemini-3-flash-preview";
 
 export async function analyzeCV(cvText: string, jdText: string): Promise<AnalysisResult> {
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY_MISSING: تأكد من إضافة المفتاح في إعدادات Vercel بشكل صحيح باسم API_KEY");
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API_KEY_NOT_FOUND: مفتاح API غير موجود في إعدادات البيئة.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const contextJd = jdText.trim() || "General Professional Role";
+  const ai = new GoogleGenAI({ apiKey });
+  const contextJd = jdText.trim() || "General Professional CV Audit";
 
   const prompt = `
-    You are an expert ATS (Applicant Tracking System) Analyzer. 
-    Perform a deep technical audit of the following CV against the provided Job Description.
+    Analyze this CV against the following Job Description.
+    Return ONLY a valid JSON object matching the requested schema.
     
-    JOB DESCRIPTION:
-    ${contextJd}
-    
-    CURRICULUM VITAE:
-    ${cvText}
-    
-    Return the analysis in strict JSON format.
+    JD: ${contextJd}
+    CV: ${cvText}
   `;
 
   try {
@@ -32,7 +28,7 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        temperature: 0.1, // درجة حرارة منخفضة لضمان دقة البيانات
+        temperature: 0.1,
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -130,28 +126,26 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
     });
 
     const text = response.text;
-    if (!text) throw new Error("AI_EMPTY_RESPONSE: لم يرجع النموذج أي بيانات.");
+    if (!text) throw new Error("Empty AI response");
     return JSON.parse(text);
   } catch (error: any) {
     console.error("Gemini Analysis Error:", error);
-    // استخراج رسالة الخطأ الأصلية لتسهيل التشخيص
-    const errorMessage = error?.message || "Internal AI Error";
-    throw new Error(`${errorMessage}`);
+    throw new Error(error.message || "Failed to analyze CV content.");
   }
 }
 
 export async function rewriteCV(cvText: string, jdText: string, analysis?: AnalysisResult): Promise<RewriteResult> {
-  if (!process.env.API_KEY) throw new Error("API_KEY is missing");
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
-  const jobKeywords = analysis 
-    ? [...analysis.relevanceDetails.missingMustHave, ...analysis.relevanceDetails.missingNiceToHave] 
-    : [];
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key missing");
+
+  const ai = new GoogleGenAI({ apiKey });
+  const keywords = analysis ? [...analysis.relevanceDetails.missingMustHave, ...analysis.relevanceDetails.missingNiceToHave].join(", ") : "professional industry keywords";
 
   const prompt = `
-    You are an AI CV Architect. Rewrite the CV to optimize it for ATS.
-    Use high-impact action verbs. Focus on: ${jobKeywords.join(', ')}.
-    CV: ${cvText}
+    Optimize the following CV for ATS systems. 
+    Incorporate these missing keywords: ${keywords}.
+    Original CV: ${cvText}
+    JD: ${jdText}
   `;
 
   try {
@@ -194,10 +188,10 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
     });
 
     const text = response.text;
-    if (!text) throw new Error("AI_REWRITE_EMPTY");
+    if (!text) throw new Error("Empty AI response during rewrite");
     return JSON.parse(text);
   } catch (error: any) {
     console.error("Gemini Rewrite Error:", error);
-    throw new Error(error?.message || "Rewrite failed");
+    throw new Error("Failed to optimize the CV text.");
   }
 }
