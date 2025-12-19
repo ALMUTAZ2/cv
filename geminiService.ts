@@ -1,9 +1,10 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, RewriteResult } from "./types.ts";
 
 /**
-
+ * AI Service for CV Analysis and Re-writing.
+ * The API key is retrieved from environment variables for security.
+ */
 const getApiKey = () => {
   const key = process.env.API_KEY;
   if (!key) {
