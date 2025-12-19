@@ -3,26 +3,27 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, RewriteResult } from "./types.ts";
 
 /**
- * AI Service for Project: gen-lang-client-0190073145
- * Crucial: Retrieves API_KEY from the environment variable set in Vercel.
+ * SmartATS AI Core Engine
+ * Security: Uses process.env.API_KEY (Managed via Vercel for zero-visibility in client source)
  */
-const getApiKey = (): string => {
-  const key = process.env.API_KEY;
-  if (!key) {
-    console.warn("CRITICAL: API_KEY is undefined. Ensure it is set in Vercel Environment Variables.");
-  }
-  return key || "";
-};
-
 const MODEL_NAME = "gemini-3-flash-preview";
 
 export async function analyzeCV(cvText: string, jdText: string): Promise<AnalysisResult> {
-  // Always create a fresh instance for Vercel/Edge compatibility
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
-  const contextJd = jdText?.trim() || "General Professional CV Audit";
-
-  // Clean prompt construction to avoid template literal syntax errors
-  const prompt = "Analyze this CV for ATS compliance. JD: " + contextJd + " \n\n CV Content: " + cvText;
+  // تفعيل الاتصال باستخدام المفتاح المشفّر في بيئة التشغيل
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  const prompt = `
+    System Identity: Senior HR Auditor & ATS Specialist.
+    Task: Execute a deep neural audit of the provided CV against the Job Description.
+    
+    JD: ${jdText || "General Professional CV Audit"}
+    CV: ${cvText}
+    
+    Instructions:
+    1. Score from 0-100 based on ATS parsing rules.
+    2. Identify specific formatting issues (columns, tables, headers).
+    3. Match skills accurately.
+  `;
 
   try {
     const response = await ai.models.generateContent({
@@ -131,22 +132,27 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
       }
     });
 
-    const textOutput = response.text;
-    if (!textOutput) throw new Error("AI returned empty analysis.");
-    return JSON.parse(textOutput);
+    const text = response.text;
+    if (!text) throw new Error("No response from AI Engine");
+    return JSON.parse(text);
   } catch (error: any) {
-    console.error("Analysis Core Error:", error);
-    throw new Error(error.message || "Engine failure.");
+    console.error("Neural Link Error:", error);
+    throw new Error(error.message || "Failed to analyze document.");
   }
 }
 
 export async function rewriteCV(cvText: string, jdText: string, analysis?: AnalysisResult): Promise<RewriteResult> {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const keywords = analysis 
     ? [...analysis.relevanceDetails.missingMustHave, ...analysis.relevanceDetails.missingNiceToHave].join(", ") 
-    : "standard professional keywords";
+    : "industry-leading keywords";
 
-  const prompt = "Rewrite this CV to optimize keywords: " + keywords + " \n\n Original: " + cvText + " \n\n JD: " + jdText;
+  const prompt = `
+    Reconstruct the CV for maximum ATS impact.
+    Target Keywords: ${keywords}
+    Original: ${cvText}
+    JD: ${jdText}
+  `;
 
   try {
     const response = await ai.models.generateContent({
@@ -187,11 +193,11 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
       }
     });
 
-    const textOutput = response.text;
-    if (!textOutput) throw new Error("AI returned empty rewrite.");
-    return JSON.parse(textOutput);
+    const text = response.text;
+    if (!text) throw new Error("Rewrite failed");
+    return JSON.parse(text);
   } catch (error: any) {
-    console.error("Rewrite Core Error:", error);
-    throw new Error("Rewrite engine unavailable.");
+    console.error("Reconstruction Error:", error);
+    throw new Error("Failed to optimize text.");
   }
 }
