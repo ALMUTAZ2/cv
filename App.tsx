@@ -24,7 +24,7 @@ import Pricing from './components/Pricing.tsx';
 import RateLimitOverlay from './components/RateLimitOverlay.tsx';
 
 const RPM_LIMIT = 5;
-const RPD_LIMIT = 2; // تم التعديل إلى 2 بناءً على طلبك
+const RPD_LIMIT = 2; // Strict limit for Project 0190073145
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
@@ -52,9 +52,9 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    const savedHistory = localStorage.getItem('smartats_history');
-    const savedDailyCount = localStorage.getItem('smartats_daily_count');
-    const savedLastDate = localStorage.getItem('smartats_last_date');
+    const savedHistory = localStorage.getItem('gen_lang_history');
+    const savedDailyCount = localStorage.getItem('gen_lang_daily_count');
+    const savedLastDate = localStorage.getItem('gen_lang_last_date');
     const today = new Date().toLocaleDateString();
 
     let dailyCount = savedDailyCount ? parseInt(savedDailyCount) : 0;
@@ -63,8 +63,8 @@ const App: React.FC = () => {
     if (lastDate !== today) {
       dailyCount = 0;
       lastDate = today;
-      localStorage.setItem('smartats_daily_count', '0');
-      localStorage.setItem('smartats_last_date', today);
+      localStorage.setItem('gen_lang_daily_count', '0');
+      localStorage.setItem('gen_lang_last_date', today);
     }
 
     setState(prev => ({ 
@@ -112,7 +112,7 @@ const App: React.FC = () => {
       const newDailyCount = state.dailyUsageCount + 1;
       
       setRpmTimestamps(prev => [...prev.filter(ts => ts > now - 60000), now]);
-      localStorage.setItem('smartats_daily_count', newDailyCount.toString());
+      localStorage.setItem('gen_lang_daily_count', newDailyCount.toString());
 
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -123,7 +123,7 @@ const App: React.FC = () => {
       };
 
       const newHistory = [newHistoryItem, ...state.history];
-      localStorage.setItem('smartats_history', JSON.stringify(newHistory));
+      localStorage.setItem('gen_lang_history', JSON.stringify(newHistory));
 
       setState(prev => ({
         ...prev,
@@ -134,9 +134,9 @@ const App: React.FC = () => {
         currentView: 'analyze'
       }));
     } catch (error: any) {
-      console.error("Frontend Analysis error:", error);
+      console.error("App Analysis Error:", error);
       setState(prev => ({ ...prev, isAnalyzing: false }));
-      alert(`Technical Error: ${error.message || 'The AI engine is currently unavailable.'}`);
+      alert(`System Error: ${error.message || 'The AI service failed to respond.'}`);
     }
   };
 
@@ -155,9 +155,9 @@ const App: React.FC = () => {
       
       setState(prev => ({ ...prev, rewriteResult: result, isRewriting: false }));
     } catch (error: any) {
-      console.error("Rewrite failed:", error);
+      console.error("App Rewrite Error:", error);
       setState(prev => ({ ...prev, isRewriting: false }));
-      alert(`Rewrite failed: ${error.message || 'Service unavailable'}`);
+      alert("AI Reconstruction failed. Check connectivity.");
     }
   };
 
@@ -190,18 +190,20 @@ const App: React.FC = () => {
         />
       )}
 
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-slate-200 z-50 flex items-center justify-between px-4 py-3">
+      {/* Mobile Top Bar */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md border-b border-slate-200 z-50 flex items-center justify-between px-4 py-3">
         <div className="flex items-center space-x-2">
           <div className="bg-indigo-600 p-1.5 rounded-lg">
             <Zap className="h-5 w-5 text-white" />
           </div>
-          <span className="font-black text-lg text-slate-900 tracking-tighter">SmartATS Pro</span>
+          <span className="font-black text-xs text-slate-900 tracking-tighter uppercase">gen-lang-client-0190073145</span>
         </div>
         <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-slate-600">
           {isSidebarOpen ? <X /> : <Menu />}
         </button>
       </div>
 
+      {/* Desktop Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-slate-200 transform transition-transform duration-500 lg:translate-x-0 lg:static ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full">
           <div className="p-8">
@@ -210,8 +212,8 @@ const App: React.FC = () => {
                 <ShieldCheck className="h-7 w-7 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-slate-900 tracking-tighter leading-none">SmartATS</h1>
-                <p className="text-[10px] uppercase font-black text-indigo-500 tracking-[0.2em] mt-1">Enterprise Engine</p>
+                <h1 className="text-sm font-black text-slate-900 tracking-tighter leading-none">gen-lang-client</h1>
+                <p className="text-[9px] uppercase font-black text-indigo-500 tracking-[0.2em] mt-1 italic">ID: 0190073145</p>
               </div>
             </div>
 
@@ -226,8 +228,8 @@ const App: React.FC = () => {
 
           <div className="mt-auto p-6 border-t border-slate-100 bg-slate-50/50">
             <div className="bg-white rounded-2xl p-5 mb-6 border border-slate-200 shadow-sm">
-              <div className="flex justify-between items-center text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest">
-                <span className="flex items-center"><Timer className="h-3 w-3 mr-1" /> Daily Limit</span>
+              <div className="flex justify-between items-center text-[9px] font-black text-slate-500 mb-2 uppercase tracking-widest">
+                <span className="flex items-center"><Timer className="h-3 w-3 mr-1" /> Daily Quota</span>
                 <span>{state.dailyUsageCount} / {RPD_LIMIT}</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
@@ -240,7 +242,7 @@ const App: React.FC = () => {
 
             <button className="flex items-center w-full px-4 py-3 text-sm font-bold text-slate-500 hover:bg-white hover:text-slate-900 rounded-xl transition-all">
               <Settings className="mr-3 h-5 w-5 text-slate-400" />
-              Settings
+              System Config
             </button>
           </div>
         </div>

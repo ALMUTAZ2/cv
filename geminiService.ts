@@ -1,14 +1,15 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, RewriteResult } from "./types.ts";
 
 /**
- * AI Service for CV Analysis and Re-writing.
- * The API key is retrieved from environment variables for security.
+ * AI Service for Project: gen-lang-client-0190073145
+ * Crucial: Retrieves API_KEY from the environment variable set in Vercel.
  */
-const getApiKey = () => {
+const getApiKey = (): string => {
   const key = process.env.API_KEY;
   if (!key) {
-    console.error("Missing API_KEY: Please set it in your Vercel Environment Variables.");
+    console.warn("CRITICAL: API_KEY is undefined. Ensure it is set in Vercel Environment Variables.");
   }
   return key || "";
 };
@@ -16,16 +17,12 @@ const getApiKey = () => {
 const MODEL_NAME = "gemini-3-flash-preview";
 
 export async function analyzeCV(cvText: string, jdText: string): Promise<AnalysisResult> {
+  // Always create a fresh instance for Vercel/Edge compatibility
   const ai = new GoogleGenAI({ apiKey: getApiKey() });
   const contextJd = jdText?.trim() || "General Professional CV Audit";
 
-  const prompt = `
-    Analyze the following CV against the provided Job Description.
-    JD: ${contextJd}
-    CV Content: ${cvText}
-    
-    Return a detailed JSON object following the required schema exactly.
-  `;
+  // Clean prompt construction to avoid template literal syntax errors
+  const prompt = "Analyze this CV for ATS compliance. JD: " + contextJd + " \n\n CV Content: " + cvText;
 
   try {
     const response = await ai.models.generateContent({
@@ -134,11 +131,12 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
       }
     });
 
-    if (!response.text) throw new Error("Empty analysis response");
-    return JSON.parse(response.text);
+    const textOutput = response.text;
+    if (!textOutput) throw new Error("AI returned empty analysis.");
+    return JSON.parse(textOutput);
   } catch (error: any) {
-    console.error("Gemini Analysis Error:", error);
-    throw new Error(error.message || "Failed to analyze document.");
+    console.error("Analysis Core Error:", error);
+    throw new Error(error.message || "Engine failure.");
   }
 }
 
@@ -148,13 +146,7 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
     ? [...analysis.relevanceDetails.missingMustHave, ...analysis.relevanceDetails.missingNiceToHave].join(", ") 
     : "standard professional keywords";
 
-  const prompt = `
-    Rewrite the following CV content to be ATS-optimized. 
-    Focus on incorporating missing keywords: ${keywords}.
-    Maintain factual honesty. Enhance impact and action verbs.
-    Original CV: ${cvText}
-    JD Context: ${jdText}
-  `;
+  const prompt = "Rewrite this CV to optimize keywords: " + keywords + " \n\n Original: " + cvText + " \n\n JD: " + jdText;
 
   try {
     const response = await ai.models.generateContent({
@@ -195,10 +187,11 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
       }
     });
 
-    if (!response.text) throw new Error("Empty rewrite response");
-    return JSON.parse(response.text);
+    const textOutput = response.text;
+    if (!textOutput) throw new Error("AI returned empty rewrite.");
+    return JSON.parse(textOutput);
   } catch (error: any) {
-    console.error("Gemini Rewrite Error:", error);
-    throw new Error("Failed to optimize CV text.");
+    console.error("Rewrite Core Error:", error);
+    throw new Error("Rewrite engine unavailable.");
   }
 }
