@@ -2,15 +2,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, RewriteResult } from "./types.ts";
 
-/**
- * SmartATS AI Core Engine
- * تم تعديل المحرك ليعتمد حصرياً على متغيرات البيئة لضمان أعلى معايير الأمان.
- * تأكد من تعريف API_KEY في إعدادات Vercel.
- */
-const MODEL_NAME = "gemini-3-flash-preview";
+// CV auditing is a complex text task requiring advanced reasoning, so we use gemini-3-pro-preview.
+const MODEL_NAME = "gemini-3-pro-preview";
 
 export async function analyzeCV(cvText: string, jdText: string): Promise<AnalysisResult> {
-  // استخدام المفتاح من متغيرات البيئة مباشرة كما تقتضي التعليمات البرمجية الآمنة
+  // Always create a new GoogleGenAI instance right before making an API call to use the most up-to-date API key.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const prompt = `
@@ -22,9 +18,7 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
     
     Instructions:
     1. Score from 0-100 based on ATS parsing rules.
-    2. Identify specific formatting issues (columns, tables, headers).
-    3. Match skills accurately.
-    4. Provide the result in strict JSON format according to the schema.
+    2. Provide results in strict JSON format.
   `;
 
   try {
@@ -135,11 +129,15 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
     });
 
     const text = response.text;
-    if (!text) throw new Error("Terminal received empty response");
+    if (!text) throw new Error("AI returned empty content");
     return JSON.parse(text);
   } catch (error: any) {
-    console.error("AI Diagnostic Failure:", error);
-    throw new Error(error.message || "Failed to analyze document. Ensure API_KEY is set in Vercel.");
+    console.error("Analysis Error:", error);
+    // Detect API key or project-related errors to trigger re-selection dialog.
+    if (error.message?.includes("API key") || error.message?.includes("Requested entity was not found")) {
+      throw new Error("API Connection Lost. Please re-connect your Google Cloud Key.");
+    }
+    throw error;
   }
 }
 
@@ -150,7 +148,7 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
     : "professional industry keywords";
 
   const prompt = `
-    Task: Execute Factual Reconstruction of the CV for ATS dominance.
+    Task: Optimize CV.
     Keywords: ${keywords}
     CV: ${cvText}
     JD: ${jdText}
@@ -196,10 +194,13 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
     });
 
     const text = response.text;
-    if (!text) throw new Error("Reconstruction process failed");
+    if (!text) throw new Error("Rewrite failed");
     return JSON.parse(text);
   } catch (error: any) {
-    console.error("AI Reconstruction Failure:", error);
-    throw new Error("Failed to optimize text. Ensure API_KEY is set in Vercel.");
+    console.error("Rewrite Error:", error);
+    if (error.message?.includes("API key") || error.message?.includes("Requested entity was not found")) {
+      throw new Error("API Connection Lost. Please re-connect your Google Cloud Key.");
+    }
+    throw error;
   }
 }

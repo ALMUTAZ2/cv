@@ -12,7 +12,10 @@ import {
   Menu,
   X,
   CreditCard,
-  Timer
+  Timer,
+  Lock,
+  ExternalLink,
+  ShieldAlert
 } from 'lucide-react';
 import { AppState, AnalysisResult, RewriteResult, HistoryItem } from './types.ts';
 import { analyzeCV, rewriteCV } from './geminiService.ts';
@@ -23,10 +26,16 @@ import RewriteView from './components/RewriteView.tsx';
 import Pricing from './components/Pricing.tsx';
 import RateLimitOverlay from './components/RateLimitOverlay.tsx';
 
+// The AIStudio interface and window.aistudio are already provided by the environment.
+// Redefining them here causes type mismatch errors in the TypeScript compiler.
+
 const RPM_LIMIT = 5;
-const RPD_LIMIT = 2; 
+const RPD_LIMIT = 5; 
 
 const App: React.FC = () => {
+  const [isKeyConnected, setIsKeyConnected] = useState<boolean>(true);
+  const [isCheckingKey, setIsCheckingKey] = useState<boolean>(true);
+
   const [state, setState] = useState<AppState>({
     currentView: 'home',
     analysisResult: null,
@@ -52,6 +61,19 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
+    const checkApiKey = async () => {
+      try {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setIsKeyConnected(hasKey);
+      } catch (e) {
+        // في حال فشل الفحص، نفترض أننا نحتاج للربط
+        setIsKeyConnected(false);
+      } finally {
+        setIsCheckingKey(false);
+      }
+    };
+    checkApiKey();
+
     const savedHistory = localStorage.getItem('smartats_history_v2');
     const savedDailyCount = localStorage.getItem('smartats_daily_count_v2');
     const savedLastDate = localStorage.getItem('smartats_last_date_v2');
@@ -74,6 +96,12 @@ const App: React.FC = () => {
       lastResetDate: lastDate
     }));
   }, []);
+
+  const handleConnectKey = async () => {
+    // Race condition: Assume key selection was successful and proceed to the app
+    await window.aistudio.openSelectKey();
+    setIsKeyConnected(true);
+  };
 
   const getWaitTimes = () => {
     const now = Date.now();
@@ -136,6 +164,12 @@ const App: React.FC = () => {
     } catch (error: any) {
       console.error("App Analysis error:", error);
       setState(prev => ({ ...prev, isAnalyzing: false }));
+      
+      // Reset key selection state if required
+      if (error.message?.includes("API Connection Lost")) {
+        setIsKeyConnected(false);
+      }
+      
       alert(`System Error: ${error.message || 'The AI service is temporarily down.'}`);
     }
   };
@@ -157,6 +191,11 @@ const App: React.FC = () => {
     } catch (error: any) {
       console.error("Rewrite error:", error);
       setState(prev => ({ ...prev, isRewriting: false }));
+      
+      if (error.message?.includes("API Connection Lost")) {
+        setIsKeyConnected(false);
+      }
+      
       alert(`Optimize failed: ${error.message || 'Service unreachable'}`);
     }
   };
@@ -179,6 +218,59 @@ const App: React.FC = () => {
       {label}
     </button>
   );
+
+  // واجهة الربط في حال عدم وجود مفتاح
+  if (!isKeyConnected && !isCheckingKey) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 font-['Inter']">
+        <div className="max-w-md w-full bg-white rounded-[2.5rem] p-12 text-center shadow-2xl space-y-8 animate-in zoom-in duration-500">
+          <div className="relative mx-auto w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center">
+            <ShieldAlert className="h-10 w-10 text-indigo-600" />
+            <div className="absolute inset-0 rounded-full border-4 border-indigo-600/10 border-t-indigo-600 animate-spin" />
+          </div>
+          
+          <div className="space-y-3">
+            <h2 className="text-3xl font-black text-slate-900 tracking-tighter">AI Core Restricted</h2>
+            <p className="text-slate-500 font-medium leading-relaxed">
+              To utilize the Enterprise Neural Engine, you must connect a valid Google Cloud API key from a paid project.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <button 
+              onClick={handleConnectKey}
+              className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-lg flex items-center justify-center space-x-3 hover:bg-indigo-700 transition-all active:scale-95 shadow-xl shadow-indigo-100"
+            >
+              <Lock className="h-5 w-5" />
+              <span>Connect AI Project</span>
+            </button>
+            
+            <a 
+              href="https://ai.google.dev/gemini-api/docs/billing" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center justify-center text-xs font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors"
+            >
+              Learn about billing <ExternalLink className="h-3 w-3 ml-1" />
+            </a>
+          </div>
+
+          <p className="text-[10px] text-slate-400 font-medium italic">
+            Your key is handled securely by AI Studio and is never stored on our servers.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isCheckingKey) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center space-y-4">
+        <div className="h-12 w-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Warming up engines...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-['Inter']">
