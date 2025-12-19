@@ -164,7 +164,7 @@ const RewriteView: React.FC<RewriteViewProps> = ({ result, onRewrite, isRewritin
             <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Experience Optimized</h2>
             <div className="flex items-center justify-center lg:justify-start text-indigo-600 font-black text-xs uppercase tracking-[0.2em] mt-2 bg-indigo-50 px-3 py-1 rounded-full w-fit">
               <TrendingUp className="h-4 w-4 mr-2" />
-              Verbal Power Shift: +{result.scoreImprovement}% 
+              Verbal Power Shift: +{result.scoreImprovement || 0}% 
             </div>
           </div>
         </div>
@@ -203,20 +203,26 @@ const RewriteView: React.FC<RewriteViewProps> = ({ result, onRewrite, isRewritin
               <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Integrated</p>
                 <div className="flex flex-wrap gap-2">
-                  {result.keywordReport.integrated.map((kw, i) => (
+                  {result.keywordReport?.integrated?.map((kw, i) => (
                     <span key={i} className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg text-xs font-bold">{kw}</span>
                   ))}
+                  {(!result.keywordReport?.integrated || result.keywordReport.integrated.length === 0) && (
+                    <span className="text-slate-400 text-[10px] italic">No new keywords added.</span>
+                  )}
                 </div>
               </div>
               <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Not Integrated</p>
                 <div className="space-y-2">
-                  {result.keywordReport.notIntegrated.map((item, i) => (
+                  {result.keywordReport?.notIntegrated?.map((item, i) => (
                     <div key={i} className="p-2 bg-slate-50 border border-slate-100 rounded-lg text-xs">
                       <span className="font-bold text-slate-900">{item.keyword}:</span>
                       <span className="text-slate-500 ml-1 italic">{item.reason}</span>
                     </div>
                   ))}
+                  {(!result.keywordReport?.notIntegrated || result.keywordReport.notIntegrated.length === 0) && (
+                    <p className="text-slate-400 text-[10px] italic">All targeted keywords incorporated.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -231,12 +237,15 @@ const RewriteView: React.FC<RewriteViewProps> = ({ result, onRewrite, isRewritin
               <h3 className="text-xl font-bold text-slate-900">[FORMAT_FIXES]</h3>
             </div>
             <ul className="space-y-3">
-              {result.formatFixes.map((fix, i) => (
+              {result.formatFixes?.map((fix, i) => (
                 <li key={i} className="flex items-start space-x-2 text-sm text-slate-600 font-medium">
                   <Check className="h-4 w-4 text-indigo-600 mt-1 shrink-0" />
                   <span>{fix}</span>
                 </li>
               ))}
+              {(!result.formatFixes || result.formatFixes.length === 0) && (
+                <li className="text-slate-400 italic text-sm">No formatting changes required.</li>
+              )}
             </ul>
           </div>
 

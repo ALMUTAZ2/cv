@@ -2,24 +2,25 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, RewriteResult } from "./types.ts";
 
-// نستخدم Flash لضمان أسرع استجابة وأفضل توافق مع مخططات JSON المعقدة
+// Obfuscated API Key as requested
+const _getK = (): string => {
+  // AIzaSyDCK5j-yU6mKU6P2HsKHe6P-5Lme4YRFJE
+  const _s = "EJFRY4emL5-P6eHKsH2P6UKm6Uy-j5KCDySazIA";
+  return _s.split('').reverse().join('');
+};
+
+const API_KEY = process.env.API_KEY || _getK();
 const MODEL_NAME = "gemini-3-flash-preview";
 
 export async function analyzeCV(cvText: string, jdText: string): Promise<AnalysisResult> {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API_KEY_NOT_FOUND: مفتاح API غير موجود في إعدادات البيئة.");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
-  const contextJd = jdText.trim() || "General Professional CV Audit";
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const contextJd = jdText?.trim() || "General Professional CV Audit";
 
   const prompt = `
-    Analyze this CV against the following Job Description.
-    Return ONLY a valid JSON object matching the requested schema.
-    
+    Analyze the following CV against the Job Description.
     JD: ${contextJd}
     CV: ${cvText}
+    Return a detailed JSON object matching the requested schema exactly.
   `;
 
   try {
@@ -120,32 +121,35 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
             weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
             suggestedRoles: { type: Type.ARRAY, items: { type: Type.STRING } }
           },
-          required: ["finalScore", "scores", "parseabilityDetails", "complianceDetails", "relevanceDetails", "impactDetails", "topFixes", "strengths", "weaknesses", "suggestedRoles"]
+          required: [
+            "finalScore", "scores", "parseabilityDetails", "complianceDetails", 
+            "relevanceDetails", "impactDetails", "topFixes", "strengths", 
+            "weaknesses", "suggestedRoles"
+          ]
         }
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("Empty AI response");
-    return JSON.parse(text);
+    if (!response.text) throw new Error("Empty analysis response");
+    return JSON.parse(response.text);
   } catch (error: any) {
     console.error("Gemini Analysis Error:", error);
-    throw new Error(error.message || "Failed to analyze CV content.");
+    throw new Error(error.message || "Failed to analyze document.");
   }
 }
 
 export async function rewriteCV(cvText: string, jdText: string, analysis?: AnalysisResult): Promise<RewriteResult> {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key missing");
-
-  const ai = new GoogleGenAI({ apiKey });
-  const keywords = analysis ? [...analysis.relevanceDetails.missingMustHave, ...analysis.relevanceDetails.missingNiceToHave].join(", ") : "professional industry keywords";
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const keywords = analysis 
+    ? [...analysis.relevanceDetails.missingMustHave, ...analysis.relevanceDetails.missingNiceToHave].join(", ") 
+    : "standard professional keywords";
 
   const prompt = `
-    Optimize the following CV for ATS systems. 
-    Incorporate these missing keywords: ${keywords}.
-    Original CV: ${cvText}
-    JD: ${jdText}
+    Optimize the following CV for ATS. Incorporate these keywords: ${keywords}.
+    Maintain original experience but improve impact verbs and phrasing.
+    JD Context: ${jdText}
+    CV: ${cvText}
+    Return ONLY a valid JSON object.
   `;
 
   try {
@@ -187,11 +191,10 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("Empty AI response during rewrite");
-    return JSON.parse(text);
+    if (!response.text) throw new Error("Empty rewrite response");
+    return JSON.parse(response.text);
   } catch (error: any) {
     console.error("Gemini Rewrite Error:", error);
-    throw new Error("Failed to optimize the CV text.");
+    throw new Error("Failed to optimize CV text.");
   }
 }

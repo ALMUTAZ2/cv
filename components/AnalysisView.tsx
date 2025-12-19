@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { AnalysisResult } from '../types.ts';
 import { 
@@ -30,8 +31,8 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ result, onRewrite, isRewrit
   const [activeTab, setActiveTab] = useState<'overview' | 'parser' | 'compliance' | 'relevance'>('overview');
 
   const scoreData = (val: number) => [
-    { name: 'Score', value: val },
-    { name: 'Gap', value: 100 - val },
+    { name: 'Score', value: val || 0 },
+    { name: 'Gap', value: 100 - (val || 0) },
   ];
 
   const getSeverityColor = (severity: string) => {
@@ -58,7 +59,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ result, onRewrite, isRewrit
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-black text-slate-900">{value}%</span>
+          <span className="text-2xl font-black text-slate-900">{value || 0}%</span>
         </div>
       </div>
       <span className="mt-2 text-xs font-black text-slate-400 uppercase tracking-widest">{label}</span>
@@ -122,16 +123,16 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ result, onRewrite, isRewrit
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-6xl font-black text-slate-900 tracking-tighter">{result.finalScore}%</span>
+              <span className="text-6xl font-black text-slate-900 tracking-tighter">{result.finalScore || 0}%</span>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">ATS Score</span>
             </div>
           </div>
         </div>
 
         <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-12">
-          <ScoreRing value={result.scores.parseability} label="Structure" color="#6366f1" />
-          <ScoreRing value={result.scores.compliance} label="Compliance" color="#8b5cf6" />
-          <ScoreRing value={result.scores.relevance} label="Job Fit" color="#ec4899" />
+          <ScoreRing value={result.scores?.parseability} label="Structure" color="#6366f1" />
+          <ScoreRing value={result.scores?.compliance} label="Compliance" color="#8b5cf6" />
+          <ScoreRing value={result.scores?.relevance} label="Job Fit" color="#ec4899" />
         </div>
       </div>
 
@@ -154,7 +155,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ result, onRewrite, isRewrit
                   Priority Fixes
                 </h3>
                 <div className="space-y-5">
-                  {result.topFixes.map((fix, i) => (
+                  {result.topFixes?.map((fix, i) => (
                     <div key={i} className="group flex items-center justify-between p-6 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-white hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-100/30 transition-all duration-300">
                       <div className="flex items-start space-x-5">
                         <div className="mt-1 flex items-center justify-center h-8 w-8 rounded-full bg-slate-900 text-white text-[10px] font-black">
@@ -173,6 +174,9 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ result, onRewrite, isRewrit
                       <ArrowRight className="h-6 w-6 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
                     </div>
                   ))}
+                  {(!result.topFixes || result.topFixes.length === 0) && (
+                    <p className="text-slate-400 italic text-center py-4">No critical fixes identified.</p>
+                  )}
                 </div>
               </div>
 
@@ -186,19 +190,19 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ result, onRewrite, isRewrit
                     <div>
                       <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Quantification Ratio</span>
-                        <span className="text-sm font-black text-indigo-600">{Math.round(result.impactDetails.quantificationRatio * 100)}%</span>
+                        <span className="text-sm font-black text-indigo-600">{Math.round((result.impactDetails?.quantificationRatio || 0) * 100)}%</span>
                       </div>
                       <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-                        <div className="h-full bg-indigo-600 rounded-full transition-all duration-1000" style={{ width: `${result.impactDetails.quantificationRatio * 100}%` }}></div>
+                        <div className="h-full bg-indigo-600 rounded-full transition-all duration-1000" style={{ width: `${(result.impactDetails?.quantificationRatio || 0) * 100}%` }}></div>
                       </div>
                     </div>
                     <p className="text-sm text-slate-500 font-medium leading-relaxed italic">
-                      "Successful CVs quantify impact. You currently have {result.impactDetails.quantificationRatio > 0.3 ? 'strong' : 'weak'} numeric evidence."
+                      "Successful CVs quantify impact. You currently have {(result.impactDetails?.quantificationRatio || 0) > 0.3 ? 'strong' : 'weak'} numeric evidence."
                     </p>
                   </div>
                   <div className="bg-slate-900 p-8 rounded-[2rem] text-white flex flex-col justify-center">
                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-2 block">Executive Verb Rating</span>
-                    <p className="text-5xl font-black">{result.impactDetails.score}<span className="text-xl text-slate-500">/100</span></p>
+                    <p className="text-5xl font-black">{result.impactDetails?.score || 0}<span className="text-xl text-slate-500">/100</span></p>
                   </div>
                 </div>
               </div>
@@ -208,27 +212,27 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ result, onRewrite, isRewrit
               <div className="bg-indigo-600 p-10 rounded-[2.5rem] text-white shadow-2xl shadow-indigo-200">
                 <h4 className="text-xl font-black mb-4">Level Alignment</h4>
                 <div className="inline-flex px-4 py-1.5 rounded-full bg-white/10 text-white border border-white/20 text-[10px] font-black uppercase tracking-[0.2em] mb-6">
-                  {result.relevanceDetails.seniorityMatch}
+                  {result.relevanceDetails?.seniorityMatch || 'N/A'}
                 </div>
                 <p className="text-sm text-indigo-100 leading-relaxed font-medium">
-                  We've detected that your experience depth {result.relevanceDetails.seniorityMatch === 'match' ? 'is perfectly tuned' : 'needs recalibration'} for this specific role.
+                  We've detected that your experience depth {result.relevanceDetails?.seniorityMatch === 'match' ? 'is perfectly tuned' : 'needs recalibration'} for this specific role.
                 </p>
               </div>
 
               <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-sm">
                 <h4 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] mb-8">Skill Taxonomy</h4>
                 <div className="space-y-6">
-                  <CoverageBar label="Technical Stack" value={result.relevanceDetails.skillCoverage.hardSkills} />
-                  <CoverageBar label="Ecosystem Tools" value={result.relevanceDetails.skillCoverage.tools} />
-                  <CoverageBar label="Core Leadership" value={result.relevanceDetails.skillCoverage.softSkills} />
-                  <CoverageBar label="Credentials" value={result.relevanceDetails.skillCoverage.certifications} />
+                  <CoverageBar label="Technical Stack" value={result.relevanceDetails?.skillCoverage?.hardSkills || 0} />
+                  <CoverageBar label="Ecosystem Tools" value={result.relevanceDetails?.skillCoverage?.tools || 0} />
+                  <CoverageBar label="Core Leadership" value={result.relevanceDetails?.skillCoverage?.softSkills || 0} />
+                  <CoverageBar label="Credentials" value={result.relevanceDetails?.skillCoverage?.certifications || 0} />
                 </div>
               </div>
             </div>
           </div>
         )}
         
-        {/* Placeholder for other tabs (implementation follows same high-fidelity style) */}
+        {/* Placeholder for other tabs */}
         {activeTab !== 'overview' && (
           <div className="bg-white p-20 rounded-[3rem] border border-slate-200 text-center">
             <Loader2 className="h-10 w-10 animate-spin mx-auto text-indigo-600 mb-4" />
