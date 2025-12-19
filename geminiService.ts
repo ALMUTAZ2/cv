@@ -4,13 +4,16 @@ import { AnalysisResult, RewriteResult } from "./types.ts";
 
 /**
  * SmartATS AI Core Engine
- * Security Level: Code-level obscurity for the API Key fallback.
- * The system prioritizes process.env.API_KEY as the secure production source.
+ * Security Level: Code-level obscurity (Base64 + Reverse strategy)
  */
-const _D = (s: string) => atob(s).split('').reverse().join('');
-const _E = 'QTNvX3hkeGt4cWZRVEhicmE4cHVtNUtiNmZDamdyb2FGQ3lTYVpJQQ==';
-const _V = process.env.API_KEY || _D(_E);
+const _K = () => {
+  // السلسلة المشفرة الصحيحة للمفتاح المطلوب
+  const _O = "QTNvX3hkM2t4MWZRVUhiOGFwdW01S0I2ZkNmN2pvYUZDeVNhaVVB"; 
+  const _S = atob(_O);
+  return _S.split('').reverse().join('');
+};
 
+const _V = process.env.API_KEY || _K();
 const MODEL_NAME = "gemini-3-flash-preview";
 
 export async function analyzeCV(cvText: string, jdText: string): Promise<AnalysisResult> {
@@ -138,11 +141,11 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
     });
 
     const text = response.text;
-    if (!text) throw new Error("Terminal received empty response");
+    if (!text) throw new Error("Empty AI response received.");
     return JSON.parse(text);
   } catch (error: any) {
-    console.error("AI Diagnostic Failure:", error);
-    throw new Error(error.message || "Failed to analyze document.");
+    console.error("AI Error:", error);
+    throw new Error(error.message || "Diagnostic failure.");
   }
 }
 
@@ -150,23 +153,13 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
   const ai = new GoogleGenAI({ apiKey: _V });
   const keywords = analysis 
     ? [...analysis.relevanceDetails.missingMustHave, ...analysis.relevanceDetails.missingNiceToHave].join(", ") 
-    : "industry keywords";
+    : "professional industry keywords";
 
   const prompt = `
-    Task: Execute Factual Reconstruction of the CV for ATS dominance.
-    Target Keywords for Integration: ${keywords}
-    
-    Current Content:
-    ${cvText}
-    
-    Target Job (Context):
-    ${jdText}
-    
-    Constraints:
-    1. Optimize bullet points using the STAR method.
-    2. Quantify achievements where possible.
-    3. Ensure 100% ATS parser compatibility.
-    4. Provide the result in strict JSON format.
+    Task: Optimize the CV for ATS.
+    Keywords: ${keywords}
+    CV: ${cvText}
+    JD: ${jdText}
   `;
 
   try {
@@ -209,10 +202,10 @@ export async function rewriteCV(cvText: string, jdText: string, analysis?: Analy
     });
 
     const text = response.text;
-    if (!text) throw new Error("Reconstruction process failed");
+    if (!text) throw new Error("Optimization failed.");
     return JSON.parse(text);
   } catch (error: any) {
-    console.error("AI Reconstruction Failure:", error);
-    throw new Error("Failed to optimize text.");
+    console.error("Rewrite Error:", error);
+    throw new Error("Text optimization engine failure.");
   }
 }
