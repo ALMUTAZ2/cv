@@ -23,8 +23,10 @@ import RewriteView from './RewriteView.tsx';
 import Pricing from './Pricing.tsx';
 import RateLimitOverlay from './RateLimitOverlay.tsx';
 
-const RPM_LIMIT = 15;
-const RPD_LIMIT = 1500;
+// حد الطلبات في الدقيقة الواحدة (لحماية API)
+const RPM_LIMIT = 5; 
+// الحد اليومي المطلوب (2 طلبات لكل IP/جهاز)
+const RPD_LIMIT = 2; 
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
@@ -45,7 +47,6 @@ const App: React.FC = () => {
   const [jdText, setJdText] = useState('');
   const [fileName, setFileName] = useState('');
   
-  // حالة التحكم في واجهة الانتظار
   const [rateLimitState, setRateLimitState] = useState<{ active: boolean; type: 'RPM' | 'RPD'; resetTime: number }>({
     active: false,
     type: 'RPM',
@@ -80,18 +81,15 @@ const App: React.FC = () => {
     const now = Date.now();
     const oneMinuteAgo = now - 60000;
     
-    // فحص RPM
+    // فحص حدود الدقيقة (RPM)
     const validRpmTimestamps = rpmTimestamps.filter(ts => ts > oneMinuteAgo);
-    
     if (validRpmTimestamps.length >= RPM_LIMIT) {
-      // وقت الانتظار هو 60 ثانية بعد أقدم طلب في النافذة الحالية
       const oldestRequest = Math.min(...validRpmTimestamps);
       return { limited: true, type: 'RPM' as const, resetTime: oldestRequest + 60000 };
     }
 
-    // فحص RPD
+    // فحص الحدود اليومية (RPD) - هنا نطبق حد الـ 2 طلبات
     if (state.dailyUsageCount >= RPD_LIMIT) {
-      // وقت الانتظار حتى منتصف الليل
       const midnight = new Date();
       midnight.setHours(24, 0, 0, 0);
       return { limited: true, type: 'RPD' as const, resetTime: midnight.getTime() };
@@ -118,7 +116,6 @@ const App: React.FC = () => {
       const now = Date.now();
       const newDailyCount = state.dailyUsageCount + 1;
       
-      // تحديث التوقيتات وتتبع RPM
       setRpmTimestamps(prev => [...prev.filter(ts => ts > now - 60000), now]);
       localStorage.setItem('smartats_daily_count', newDailyCount.toString());
 
@@ -142,9 +139,9 @@ const App: React.FC = () => {
         currentView: 'analyze'
       }));
     } catch (error) {
-      console.error("Analysis failed", error);
+      console.error("Critical Analysis failure:", error);
       setState(prev => ({ ...prev, isAnalyzing: false }));
-      alert("Analysis failed. Please try again.");
+      alert("Analysis failed. This might be due to an invalid API_KEY in Vercel or safety filters. Please check your settings.");
     }
   };
 
@@ -165,7 +162,7 @@ const App: React.FC = () => {
     } catch (error) {
       console.error("Rewrite failed", error);
       setState(prev => ({ ...prev, isRewriting: false }));
-      alert("AI Rewriter encountered an error.");
+      alert("AI Rewriter is currently unavailable. Check your connection.");
     }
   };
 
@@ -177,7 +174,7 @@ const App: React.FC = () => {
   const SidebarItem = ({ icon: Icon, label, view }: { icon: any, label: string, view: AppState['currentView'] }) => (
     <button
       onClick={() => navigateTo(view)}
-      className={`flex items-center w-full px-4 py-3.5 text-sm font-bold transition-all rounded-xl mb-1 group ${
+      className={`flex items-center w-full px-4 py-3 text-sm font-bold transition-all rounded-xl mb-1 group ${
         state.currentView === view 
           ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
           : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
@@ -190,7 +187,6 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-['Inter']">
-      {/* واجهة تجاوز الحدود */}
       {rateLimitState.active && (
         <RateLimitOverlay 
           type={rateLimitState.type} 
@@ -235,8 +231,8 @@ const App: React.FC = () => {
 
           <div className="mt-auto p-6 border-t border-slate-100 bg-slate-50/50">
             <div className="bg-white rounded-2xl p-5 mb-6 border border-slate-200 shadow-sm">
-              <div className="flex justify-between items-center text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">
-                <span className="flex items-center"><Timer className="h-3 w-3 mr-1" /> Capacity</span>
+              <div className="flex justify-between items-center text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest">
+                <span className="flex items-center"><Timer className="h-3 w-3 mr-1" /> Daily Limit</span>
                 <span>{state.dailyUsageCount} / {RPD_LIMIT}</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
