@@ -4,20 +4,14 @@ import { AnalysisResult, RewriteResult } from "./types.ts";
 
 /**
  * SmartATS AI Core Engine
- * Security Level: Code-level obscurity (Base64 + Reverse strategy)
+ * API Key Configuration
+ * Note: prioritizing process.env.API_KEY if available in the environment.
  */
-const _K = () => {
-  // السلسلة المشفرة الصحيحة للمفتاح المطلوب
-  const _O = "QTNvX3hkM2t4MWZRVUhiOGFwdW01S0I2ZkNmN2pvYUZDeVNhaVVB"; 
-  const _S = atob(_O);
-  return _S.split('').reverse().join('');
-};
-
-const _V = process.env.API_KEY || _K();
+const API_KEY = process.env.API_KEY || "AIzaSyCFaor7jCf6bK5mup8arbHTQfxk3dx_o3A";
 const MODEL_NAME = "gemini-3-flash-preview";
 
 export async function analyzeCV(cvText: string, jdText: string): Promise<AnalysisResult> {
-  const ai = new GoogleGenAI({ apiKey: _V });
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   
   const prompt = `
     System Identity: Senior HR Auditor & ATS Specialist.
@@ -150,7 +144,7 @@ export async function analyzeCV(cvText: string, jdText: string): Promise<Analysi
 }
 
 export async function rewriteCV(cvText: string, jdText: string, analysis?: AnalysisResult): Promise<RewriteResult> {
-  const ai = new GoogleGenAI({ apiKey: _V });
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   const keywords = analysis 
     ? [...analysis.relevanceDetails.missingMustHave, ...analysis.relevanceDetails.missingNiceToHave].join(", ") 
     : "professional industry keywords";
